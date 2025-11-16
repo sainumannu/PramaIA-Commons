@@ -2,12 +2,52 @@
 
 **Guida completa per l'implementazione corretta di nuovi processori di nodi**
 
+## 🏗️ **NUOVA ARCHITETTURA PDK** - Aggiornamento Novembre 2025
+
+**⚠️ IMPORTANTE:** L'architettura è stata completamente ridisegnata!
+
+### 🎯 Separazione Core vs Business
+
+**SERVER (Solo Processori CORE):**
+- ✅ I/O Essenziali: `UserInputProcessor`, `FileInputProcessor`, `TextOutputProcessor`
+- ✅ LLM Core: `OpenAIProcessor`, `AnthropicProcessor`, `OllamaProcessor`
+- ✅ API Core: `HTTPRequestProcessor`, `WebhookProcessor`
+- ✅ Data Core: `DataTransformProcessor`, `TextProcessor`, `JSONProcessor`
+- ✅ RAG Core: `RAGQueryProcessor`, `RAGGenerationProcessor`
+
+**PDK (Tutti i Processori BUSINESS):**
+- 📨 Event Processing: `EventInputProcessor` → PDK Plugin
+- 📄 File Processing: `FileParsingProcessor` → PDK Plugin
+- 📊 Metadata: `MetadataManagerProcessor` → PDK Plugin
+- 📝 Documents: `DocumentProcessorProcessor` → PDK Plugin
+- 🔍 Vector Store: `VectorStoreOperationsProcessor` → PDK Plugin
+- 📋 Logging: `EventLoggerProcessor` → PDK Plugin
+
+### ⚡ Principi Architetturali
+
+1. **❌ ZERO FALLBACK** - Se PDK down → errore chiaro, non fallback silenziosi
+2. **🔌 PDK per Business** - Tutta la business logic è nel PDK
+3. **⚡ Server Resiliente** - Funziona per operazioni core anche senza PDK
+4. **🚨 Errori Trasparenti** - KeyError esplicito se processore business richiesto dal server
+
 ## 🎯 Panoramica
 
-I nodi in PramaIA seguono un'architettura Registry-based dove:
+I nodi in PramaIA ora seguono un'architettura **Core + PDK** dove:
+- Il **server** contiene solo processori **CORE essenziali**
+- Il **PDK** contiene tutti i processori **BUSINESS**
 - Il **database** contiene solo i **metadati** dei workflow (struttura, configurazione)
-- Il **NodeRegistry** contiene le **implementazioni** effettive dei processori
-- I workflow vengono eseguiti attraverso il registry, NON modificando il database
+- I workflow vengono eseguiti attraverso il registry appropriato
+
+## 🔄 Come Implementare Nuovi Nodi
+
+### Opzione A: Processore Core (Raro)
+
+**Usa questa opzione SOLO per:**
+- Interfacce I/O essenziali
+- Funzionalità LLM base
+- Operazioni API critiche
+
+**Implementazione:**
 
 ## ❌ Errore Comune: Modificare il Database
 
@@ -25,24 +65,23 @@ UPDATE workflow_nodes SET node_type = 'NewProcessor' WHERE node_type = 'OldProce
 
 ## ✅ Approccio Corretto: Registry Pattern
 
-### 1. Creare il Processore
+**Implementazione:**
 
-Creare un nuovo processore che eredita da `BaseNodeProcessor`:
+1. Creare processore in `backend/engine/processors/core_processors.py`:
 
 ```python
-# backend/engine/processors/my_processors.py
 from backend.engine.node_registry import BaseNodeProcessor
 from backend.engine.execution_context import ExecutionContext
 from typing import Dict, Any
 
-class MyCustomProcessor(BaseNodeProcessor):
-    """Descrizione del processore."""
+class MyCoreProcessor(BaseNodeProcessor):
+    """Processore core essenziale per funzionalità di base."""
     
     async def execute(self, node, context: ExecutionContext) -> Dict[str, Any]:
-        """Logica di elaborazione del nodo."""
+        """Logica di elaborazione core."""
         input_data = context.get_input_for_node(node.node_id)
         
-        # Elaborazione...
+        # Elaborazione core (I/O, LLM, API base)...
         result = {
             "processed_data": "...",
             "status": "success"
@@ -51,54 +90,146 @@ class MyCustomProcessor(BaseNodeProcessor):
         return result
     
     def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Valida la configurazione del nodo."""
-        # Controlla parametri richiesti
-        return "required_param" in config
+        """Valida configurazione."""
+        return True
 ```
 
-### 2. Registrare nel NodeRegistry
-
-Aggiungere il processore al registry in `backend/engine/node_registry.py`:
+2. Registrare in `backend/engine/processors/__init__.py`:
 
 ```python
-# Nel metodo _register_default_processors()
+from .core_processors import MyCoreProcessor
 
-def _register_default_processors(self):
-    # ... altri import ...
-    
-    # Import del nuovo processore
-    from backend.engine.processors.my_processors import MyCustomProcessor
-    
-    # ... altre registrazioni ...
-    
-    # Registrazione del nuovo processore
-    self.register_processor("my_custom_node", MyCustomProcessor())
+CORE_PROCESSORS = {
+    # ... altri processori core ...
+    'MyCoreProcessor': MyCoreProcessor,
+}
 ```
 
-### 3. Aggiornare il Modulo __init__.py
+### Opzione B: Processore Business (Raccomandato)
 
-Assicurarsi che il processore sia esportato correttamente:
+**Usa questa opzione per:**
+- Elaborazione documenti
+- Operazioni vector store
+- Parsing file avanzato  
+- Business logic specifica
+- Integrazioni esterne
 
-```python
-# backend/engine/processors/__init__.py
+**Implementazione PDK:**
 
-from .my_processors import MyCustomProcessor
-
-# Aggiungere a __all__
-__all__ = [
-    # ... altri processori ...
-    'MyCustomProcessor',
-]
-```
-
-### 4. Usare nei Workflow JSON
-
-Nei file JSON dei workflow, riferirsi al processore con il nome registrato:
+1. Creare plugin in `PramaIA-PDK/plugins/my-business-plugin/`:
 
 ```json
+// plugin.json
 {
-  "node_id": "node_001",
-  "name": "My Custom Node",
+  "name": "my-business-plugin",
+  "version": "1.0.0", 
+  "description": "Processore business personalizzato",
+  "nodes": [
+    {
+      "id": "my_business_processor",
+      "name": "My Business Processor",
+      "description": "Elaborazione business specifica",
+      "category": "Business",
+      "icon": "🔧",
+      "config_schema": {
+        "type": "object",
+        "properties": {
+          "param1": {"type": "string", "default": "value1"}
+        }
+      }
+    }
+  ]
+}
+```
+
+2. Implementare in `nodes/my_business_processor.js`:
+
+```javascript
+class MyBusinessProcessor {
+    constructor() {
+        this.name = 'My Business Processor';
+    }
+
+    async execute(input, config, context) {
+        const logger = context.logger || console;
+        
+        logger.info('🔧 Processing business logic...');
+        
+        // La tua business logic qui
+        const result = {
+            ...input,
+            business_data: "elaborated",
+            processed_at: new Date().toISOString()
+        };
+        
+        return result;
+    }
+
+    validate(config) {
+        return { valid: true };
+    }
+}
+
+module.exports = MyBusinessProcessor;
+```
+
+3. Usare nel server via PDKNodeProcessor:
+
+```python
+# Nel workflow
+pdk_processor = PDKNodeProcessor(
+    plugin_id='my-business-plugin',
+    node_id='my_business_processor'
+)
+```
+
+## 🚨 Cosa NON Fare
+
+### ❌ Non Aggiungere Processori Business al Server
+```python
+# ❌ SBAGLIATO - Non aggiungere al server
+class MyDocumentProcessor(BaseNodeProcessor):  # Business logic nel server
+    pass
+```
+
+### ❌ Non Creare Fallback Silenziosi
+```python  
+# ❌ SBAGLIATO - Fallback che nascondono errori
+try:
+    return pdk_processor.execute()
+except:
+    return fallback_processor.execute()  # Nasconde problemi PDK
+```
+
+### ❌ Non Modificare Database per Cambiare Implementazioni
+```sql
+-- ❌ SBAGLIATO - Il database contiene solo metadati
+UPDATE workflow_nodes SET node_type = 'NewProcessor' WHERE node_type = 'OldProcessor';
+```
+
+## ✅ Cosa Fare
+
+### ✅ Errori Chiari e Trasparenti
+```python
+# ✅ GIUSTO - Errore chiaro se PDK non disponibile
+def get_processor(processor_name):
+    if processor_name in CORE_PROCESSORS:
+        return CORE_PROCESSORS[processor_name] 
+    else:
+        raise KeyError(
+            f"Processore '{processor_name}' NON è un processore core. "
+            f"Per processori business usa PDKNodeProcessor e assicurati che PDK sia attivo."
+        )
+```
+
+### ✅ Separazione Chiara Core vs Business
+```python
+# ✅ GIUSTO - Core nel server
+user_input = UserInputProcessor()  # Sempre disponibile
+
+# ✅ GIUSTO - Business nel PDK  
+pdf_parser = PDKNodeProcessor('core-business-processors-plugin', 'file_parsing')
+```
   "node_type": "my_custom_node",
   "config": {
     "required_param": "value",

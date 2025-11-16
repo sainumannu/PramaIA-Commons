@@ -6,8 +6,71 @@
 
 Questo documento mantiene traccia di tutti i processori di nodi implementati in PramaIA, organizzati per categoria con specifiche dettagliate di input, output e configurazione.
 
-**Ultima aggiornamento:** 15 Novembre 2025  
-**Versione Sistema:** PramaIA v2.1.0
+**Ultima aggiornamento:** 16 Novembre 2025  
+**Versione Sistema:** PramaIA v2.2.0 - Architettura PDK Pura
+
+## 🏗️ **ARCHITETTURA PDK PURA** - Novembre 2025
+
+⚠️ **CAMBIO ARCHITETTURALE IMPORTANTE:**
+
+L'architettura è stata completamente ridisegnata per separare processori **CORE** (server) da processori **BUSINESS** (PDK).
+
+### 📍 Processori nel SERVER (Core Only)
+
+**✅ Disponibili sempre, anche senza PDK:**
+
+| Categoria | Processore | Tipo | Descrizione |
+|-----------|------------|------|-------------|
+| **I/O Core** | `UserInputProcessor` | Core | Input utente chat/web |
+| **I/O Core** | `FileInputProcessor` | Core | Upload file base |  
+| **I/O Core** | `TextOutputProcessor` | Core | Output testo |
+| **I/O Core** | `FileOutputProcessor` | Core | Output file |
+| **LLM Core** | `OpenAIProcessor` | Core | GPT-3.5/GPT-4 |
+| **LLM Core** | `AnthropicProcessor` | Core | Claude |
+| **LLM Core** | `OllamaProcessor` | Core | Modelli locali |
+| **API Core** | `HTTPRequestProcessor` | Core | HTTP calls |
+| **API Core** | `WebhookProcessor` | Core | Webhook handler |
+| **Data Core** | `DataTransformProcessor` | Core | Trasformazione dati |
+| **Data Core** | `TextProcessor` | Core | Elaborazione testo |
+| **Data Core** | `JSONProcessor` | Core | Manipolazione JSON |
+| **RAG Core** | `RAGQueryProcessor` | Core | Query RAG |
+| **RAG Core** | `RAGGenerationProcessor` | Core | Generazione RAG |
+
+### 🔌 Processori nel PDK (Business Only)
+
+**⚠️ Richiedono PDK attivo, errore chiaro se PDK down:**
+
+| Plugin | Processore | Descrizione | Status |
+|--------|------------|-------------|---------|
+| `core-business-processors-plugin` | `event_input` | 📨 Gestione eventi workflow | ✅ Implementato |
+| `core-business-processors-plugin` | `file_parsing` | 📄 Parsing PDF PyPDF2/pdfplumber | ✅ Implementato |
+| `core-business-processors-plugin` | `metadata_manager` | 📊 Gestione metadati | 🔄 Da implementare |
+| `core-business-processors-plugin` | `document_processor` | 📝 Chunking documenti | 🔄 Da implementare |
+| `core-business-processors-plugin` | `vector_store` | 🔍 Operazioni ChromaDB | 🔄 Da implementare |
+| `core-business-processors-plugin` | `event_logger` | 📋 Logging avanzato | 🔄 Da implementare |
+
+### 🎯 Come Usare i Processori
+
+**Core (sempre disponibili):**
+```python
+# ✅ Funziona sempre
+user_processor = get_core_processor('UserInputProcessor')
+```
+
+**Business (tramite PDK):**
+```python  
+# ✅ Funziona solo se PDK attivo
+pdf_processor = PDKNodeProcessor(
+    plugin_id='core-business-processors-plugin',
+    node_id='file_parsing'
+)
+```
+
+**Errore se business richiesto dal core:**
+```python
+# ❌ KeyError esplicito - niente fallback
+event_processor = get_core_processor('EventInputProcessor')  # ERRORE CHIARO
+```
 
 ---
 
