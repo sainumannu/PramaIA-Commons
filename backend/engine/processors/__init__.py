@@ -6,18 +6,13 @@ NOTA: I processori PDF sono stati migrati all'architettura PDK.
 Le implementazioni PDF si trovano ora in PramaIA-PDK/plugins/
 """
 
-# Importa processori REALI - Solo implementazioni complete
-from .real_processors_part2 import (
-    DocumentProcessorProcessor,
-    VectorStoreOperationsProcessor,
-    EventLoggerProcessor
-)
-
-from .simple_real_processors import (
-    SimpleEventInputProcessor as EventInputProcessor,
-    SimpleFileParsingProcessor as FileParsingProcessor, 
-    SimpleMetadataManagerProcessor as MetadataManagerProcessor
-)
+# Importa processori REALI - Solo implementazioni complete individuali  
+from .event_input_processor import EventInputProcessor
+from .file_parsing_processor import FileParsingProcessor
+from .metadata_manager_processor import MetadataManagerProcessor
+from .document_processor import DocumentProcessorProcessor
+from .vector_store_processor import VectorStoreOperationsProcessor
+from .event_logger_processor import EventLoggerProcessor
 
 # Registro processori reali
 REAL_PROCESSORS = {

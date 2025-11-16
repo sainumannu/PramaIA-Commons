@@ -109,10 +109,7 @@ class NodeRegistry:
         from backend.engine.processors.rag_processors import RAGQueryProcessor, DocumentIndexProcessor, RAGGenerationProcessor
         from backend.engine.processors.pdk_processors import PDKNodeProcessor
         # Importa i processori workflow REALI invece degli stub
-        from backend.engine.processors.workflow_processors import (
-            EventInputProcessor, FileParsingProcessor, MetadataManagerProcessor,
-            DocumentProcessorProcessor, VectorStoreOperationsProcessor, EventLoggerProcessor
-        )
+        # Tutti gli import sono nella sezione PROCESSORI REALI più sotto
         
         # Input processors
         self.register_processor("input_user", UserInputProcessor())
@@ -144,14 +141,22 @@ class NodeRegistry:
         self.register_processor("document_index", DocumentIndexProcessor())
         self.register_processor("rag_generation", RAGGenerationProcessor())
         
-        # STUB processors per workflow esistenti
-        # TODO: Implementare processori reali
-        self.register_processor("event_input_node", EventInputProcessor())
-        self.register_processor("file_parsing", FileParsingProcessor())
-        self.register_processor("metadata_manager", MetadataManagerProcessor())
-        self.register_processor("document_processor", DocumentProcessorProcessor())
-        self.register_processor("vector_store_operations", VectorStoreOperationsProcessor())
-        self.register_processor("event_logger", EventLoggerProcessor())
+        # PROCESSORI REALI - Sostituiscono gli stub
+        from backend.engine.processors import (
+            EventInputProcessor as RealEventInputProcessor,
+            FileParsingProcessor as RealFileParsingProcessor, 
+            MetadataManagerProcessor as RealMetadataManagerProcessor,
+            DocumentProcessorProcessor as RealDocumentProcessorProcessor,
+            VectorStoreOperationsProcessor as RealVectorStoreOperationsProcessor,
+            EventLoggerProcessor as RealEventLoggerProcessor
+        )
+        
+        self.register_processor("event_input_node", RealEventInputProcessor())
+        self.register_processor("file_parsing", RealFileParsingProcessor())
+        self.register_processor("metadata_manager", RealMetadataManagerProcessor())
+        self.register_processor("document_processor", RealDocumentProcessorProcessor())
+        self.register_processor("vector_store_operations", RealVectorStoreOperationsProcessor())
+        self.register_processor("event_logger", RealEventLoggerProcessor())
         
         # PDF processors migrati al PDK - rimossi i processori legacy
         # I nodi PDF sono ora gestiti tramite l'architettura PDK
