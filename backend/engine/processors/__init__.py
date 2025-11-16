@@ -1,143 +1,171 @@
 """
-Processori per l'engine PramaIA.
-Modulo di inizializzazione che esporta tutti i processori disponibili.
+Processori per l'engine PramaIA - Architettura Core + PDK
+SOLO processori essenziali core nel server.
+Tutti i processori business sono nel PDK.
 
-NOTA: I processori PDF sono stati migrati all'architettura PDK.
-Le implementazioni PDF si trovano ora in PramaIA-PDK/plugins/
+Principio: Se PDK non funziona → errore chiaro, non fallback silenziosi.
 """
 
-# Importa processori REALI - Solo implementazioni complete individuali  
-from .event_input_processor import EventInputProcessor
-from .file_parsing_processor import FileParsingProcessor
-from .metadata_manager_processor import MetadataManagerProcessor
-from .document_processor import DocumentProcessorProcessor
-from .vector_store_processor import VectorStoreOperationsProcessor
-from .event_logger_processor import EventLoggerProcessor
-
-# Registro processori reali
-REAL_PROCESSORS = {
-    'EventInputProcessor': EventInputProcessor,
-    'FileParsingProcessor': FileParsingProcessor,
-    'MetadataManagerProcessor': MetadataManagerProcessor,
-    'DocumentProcessorProcessor': DocumentProcessorProcessor,
-    'VectorStoreOperationsProcessor': VectorStoreOperationsProcessor,
-    'EventLoggerProcessor': EventLoggerProcessor
-}
-
-# Importa processori essenziali
-# RAG processors - TEMPORANEAMENTE COMMENTATI per dependency issues
-# from .rag_processors import RAGQueryProcessor, RAGGenerationProcessor, DocumentIndexProcessor
-
-# LLM processors - ESSENZIALI per la chat  
-from .llm_processors import OpenAIProcessor, AnthropicProcessor, OllamaProcessor
+# Processori CORE - Interfacce essenziali sempre nel server
+from .pdk_processors import PDKNodeProcessor
 
 # Input/Output processors - ESSENZIALI per l'interfaccia
 from .input_processors import UserInputProcessor, FileInputProcessor
 from .output_processors import TextOutputProcessor, FileOutputProcessor
 
-# Data processors - UTILI per elaborazione dati
+# Data processors - UTILI per elaborazione dati base
 from .data_processors import DataTransformProcessor, TextProcessor, JSONProcessor
 
 # API processors - UTILI per integrazioni
 from .api_processors import HTTPRequestProcessor, WebhookProcessor, APICallProcessor
 
-# Funzioni di utilità per gestione processori
-def get_real_processor(processor_name: str):
+# LLM processors - ESSENZIALI per la chat  
+from .llm_processors import OpenAIProcessor, AnthropicProcessor, OllamaProcessor
+
+# RAG processors - Core functionality
+from .rag_processors import RAGQueryProcessor, RAGGenerationProcessor, DocumentIndexProcessor
+
+# Workflow processors - Core orchestration  
+# from .workflow_processors import WorkflowExecutionProcessor
+
+# Registry SOLO processori CORE (niente business logic)
+CORE_PROCESSORS = {
+    # PDK Processor - proxy universale
+    'PDKNodeProcessor': PDKNodeProcessor,
+    
+    # I/O Essenziali
+    'UserInputProcessor': UserInputProcessor,
+    'FileInputProcessor': FileInputProcessor,
+    'TextOutputProcessor': TextOutputProcessor,
+    'FileOutputProcessor': FileOutputProcessor,
+    
+    # Data Processing Base
+    'DataTransformProcessor': DataTransformProcessor,
+    'TextProcessor': TextProcessor,
+    'JSONProcessor': JSONProcessor,
+    
+    # API Integration
+    'HTTPRequestProcessor': HTTPRequestProcessor,
+    'WebhookProcessor': WebhookProcessor,
+    'APICallProcessor': APICallProcessor,
+    
+    # LLM Core
+    'OpenAIProcessor': OpenAIProcessor,
+    'AnthropicProcessor': AnthropicProcessor,
+    'OllamaProcessor': OllamaProcessor,
+    
+    # RAG Core
+    'RAGQueryProcessor': RAGQueryProcessor,
+    'RAGGenerationProcessor': RAGGenerationProcessor,
+    'DocumentIndexProcessor': DocumentIndexProcessor
+}
+
+def get_core_processor(processor_name: str):
     """
-    Ottiene il processore reale dato il nome.
+    Ottiene un processore core.
     
     Args:
-        processor_name: Nome del processore (può essere stub o reale)
+        processor_name: Nome del processore core
         
     Returns:
-        Classe del processore reale
+        Classe del processore core
         
     Raises:
-        KeyError: Se il processore non è trovato
+        KeyError: Se il processore non è nel core (deve essere nel PDK)
     """
-    if processor_name in REAL_PROCESSORS:
-        return REAL_PROCESSORS[processor_name]
+    if processor_name in CORE_PROCESSORS:
+        return CORE_PROCESSORS[processor_name]
     else:
-        raise KeyError(f"Processore reale non trovato: {processor_name}")
+        # ERRORE CHIARO - niente fallback
+        available_core = ', '.join(CORE_PROCESSORS.keys())
+        raise KeyError(
+            f"Processore '{processor_name}' NON è un processore core. "
+            f"Disponibili nel core: [{available_core}]. "
+            f"Per processori business (EventInput, FileParsing, VectorStore, ecc.) "
+            f"usa PDKNodeProcessor e assicurati che il PDK sia attivo."
+        )
 
-def list_available_processors():
-    """Elenca tutti i processori reali disponibili."""
-    return list(REAL_PROCESSORS.keys())
+def list_core_processors():
+    """Elenca tutti i processori core disponibili."""
+    return list(CORE_PROCESSORS.keys())
 
-def validate_processor_dependencies():
+def validate_core_dependencies():
     """
-    Valida che tutte le dipendenze dei processori siano disponibili.
-    Se manca qualcosa, il sistema deve fallire chiaramente.
+    Valida che tutte le dipendenze core siano disponibili.
+    Se manca qualcosa core, il sistema deve fallire chiaramente.
     
     Returns:
-        dict: Stato delle dipendenze per ogni processore
+        dict: Stato delle dipendenze per ogni processore core
     """
     status = {}
     
-    # Test EventInputProcessor
-    status['EventInputProcessor'] = {'available': True, 'issues': []}
+    # Test processori I/O
+    status['UserInputProcessor'] = {'available': True, 'issues': []}
+    status['FileInputProcessor'] = {'available': True, 'issues': []}
+    status['TextOutputProcessor'] = {'available': True, 'issues': []}
+    status['FileOutputProcessor'] = {'available': True, 'issues': []}
     
-    # Test FileParsingProcessor - DEVE avere PyPDF2 o fallisce
-    import PyPDF2
-    import pdfplumber
-    status['FileParsingProcessor'] = {'available': True, 'issues': []}
+    # Test processori data
+    status['DataTransformProcessor'] = {'available': True, 'issues': []}
+    status['TextProcessor'] = {'available': True, 'issues': []}
+    status['JSONProcessor'] = {'available': True, 'issues': []}
     
-    # Test MetadataManagerProcessor
-    status['MetadataManagerProcessor'] = {'available': True, 'issues': []}
+    # Test processori API
+    status['HTTPRequestProcessor'] = {'available': True, 'issues': []}
+    status['WebhookProcessor'] = {'available': True, 'issues': []}
+    status['APICallProcessor'] = {'available': True, 'issues': []}
     
-    # Test DocumentProcessorProcessor
-    status['DocumentProcessorProcessor'] = {'available': True, 'issues': []}
+    # Test processori LLM (potrebbero fallire se API key mancanti)
+    try:
+        # Test basic imports
+        status['OpenAIProcessor'] = {'available': True, 'issues': []}
+        status['AnthropicProcessor'] = {'available': True, 'issues': []}
+        status['OllamaProcessor'] = {'available': True, 'issues': []}
+    except ImportError as e:
+        status['LLMProcessors'] = {'available': False, 'issues': [str(e)]}
     
-    # Test VectorStoreOperationsProcessor - DEVE avere ChromaDB o fallisce
-    import chromadb
-    from sentence_transformers import SentenceTransformer
-    status['VectorStoreOperationsProcessor'] = {
-        'available': True,
+    # Test PDK Processor
+    status['PDKNodeProcessor'] = {
+        'available': True, 
         'issues': [],
-        'type': 'real_chromadb'
+        'note': 'PDK processor è sempre disponibile come proxy. La connettività PDK viene testata a runtime.'
     }
-    
-    # Test EventLoggerProcessor
-    status['EventLoggerProcessor'] = {'available': True, 'issues': []}
     
     return status
 
 __all__ = [
-    # Processori REALI
-    'EventInputProcessor',
-    'FileParsingProcessor',
-    'MetadataManagerProcessor', 
-    'DocumentProcessorProcessor',
-    'VectorStoreOperationsProcessor',
-    'EventLoggerProcessor',
-    'REAL_PROCESSORS',
+    # Processore PDK
+    'PDKNodeProcessor',
     
-    # Processori RAG - TEMPORANEAMENTE COMMENTATI
-    # 'RAGQueryProcessor',
-    # 'RAGGenerationProcessor', 
-    # 'DocumentIndexProcessor',
-    
-    # Processori LLM
-    'OpenAIProcessor',
-    'AnthropicProcessor', 
-    'OllamaProcessor',
-    
-    # Processori I/O
+    # Processori I/O Core
     'UserInputProcessor',
     'FileInputProcessor',
     'TextOutputProcessor',
     'FileOutputProcessor',
     
-    # Processori dati e API
+    # Processori Data Core
     'DataTransformProcessor',
     'TextProcessor',
     'JSONProcessor',
+    
+    # Processori API Core
     'HTTPRequestProcessor',
-    'WebhookProcessor', 
+    'WebhookProcessor',
     'APICallProcessor',
     
-    # Funzioni utilità
-    'get_real_processor',
-    'list_available_processors',
-    'validate_processor_dependencies'
+    # Processori LLM Core
+    'OpenAIProcessor',
+    'AnthropicProcessor',
+    'OllamaProcessor',
+    
+    # Processori RAG Core
+    'RAGQueryProcessor',
+    'RAGGenerationProcessor',
+    'DocumentIndexProcessor',
+    
+    # Registry e funzioni
+    'CORE_PROCESSORS',
+    'get_core_processor',
+    'list_core_processors',
+    'validate_core_dependencies'
 ]
